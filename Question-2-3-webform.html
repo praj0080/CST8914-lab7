@@ -31,36 +31,44 @@
             font-size: 14px;
         }
 
-        /* Ensuring focus is visible for keyboard navigation */
-        input:focus, textarea:focus {
+        /* Focus outline for better keyboard navigation */
+        input:focus, textarea:focus, button:focus {
             outline: 3px solid #ff9800;
+        }
+
+        /* Hidden live regions for screen readers */
+        .sr-only {
+            position: absolute;
+            left: -9999px;
         }
     </style>
 </head>
 <body>
     <h1>Feedback Form</h1>
 
-    <!-- Added 'aria-labelledby' for screen readers to identify the form title -->
+    <!-- Live region for success message (announced by screen readers) -->
+    <div id="success-message" class="sr-only" aria-live="assertive"></div>
+
     <form id="feedback-form" aria-labelledby="form-heading">
         <fieldset>
-            <!-- Grouping form fields for better screen reader navigation -->
             <legend id="form-heading">Provide your feedback</legend>
+
+            <!-- Live region for error messages -->
+            <div id="error-container" class="sr-only" aria-live="polite"></div>
 
             <!-- Full Name Input Field -->
             <div class="control">
                 <label for="name">Full Name <span class="required">*</span></label>
                 <input id="name" name="name" type="text" aria-required="true" aria-describedby="name-error" />
-                <!-- Error message with aria-live to announce dynamically -->
-                <span id="name-error" class="error-message" aria-live="polite"></span>
+                <span id="name-error" class="error-message"></span>
             </div>
 
             <!-- Biography Input Field -->
             <div class="control">
                 <label for="biography">Biography</label>
                 <textarea id="biography" name="biography" aria-describedby="bio-hint"></textarea>
-                <!-- Providing inline instructions for screen readers -->
                 <span id="bio-hint">Include examples of your skills in JavaScript.</span>
-                <span id="biography-error" class="error-message" aria-live="polite"></span>
+                <span id="biography-error" class="error-message"></span>
             </div>
 
             <!-- Gender Selection with Fieldset for Grouping -->
@@ -74,14 +82,14 @@
                     <input id="gender_female" name="gender" type="radio" value="female" />
                     <label for="gender_female">Female</label>
                 </div>
-                <span id="gender-error" class="error-message" aria-live="polite"></span>
+                <span id="gender-error" class="error-message"></span>
             </fieldset>
 
             <!-- Checkbox for Terms & Conditions -->
             <div class="control">
                 <input id="accept_agbs" name="accept_agbs" type="checkbox" value="1" aria-required="true" />
                 <label for="accept_agbs">I accept the terms and conditions</label>
-                <span id="terms-error" class="error-message" aria-live="polite"></span>
+                <span id="terms-error" class="error-message"></span>
             </div>
 
             <!-- Submit Button -->
@@ -95,15 +103,17 @@
         document.getElementById("feedback-form").addEventListener("submit", function (event) {
             event.preventDefault();
             let isValid = true;
+            let firstErrorField = null;
 
-            // Reset error messages before validation
+            // Reset error messages
             document.querySelectorAll(".error-message").forEach(el => el.textContent = "");
+            document.getElementById("error-container").textContent = "";
 
             // Validate Full Name
             const name = document.getElementById("name");
             if (name.value.trim() === "") {
                 document.getElementById("name-error").textContent = "Please enter your name!";
-                name.focus(); // Move focus to the error field
+                if (!firstErrorField) firstErrorField = name;
                 isValid = false;
             }
 
@@ -111,6 +121,7 @@
             const gender = document.querySelector('input[name="gender"]:checked');
             if (!gender) {
                 document.getElementById("gender-error").textContent = "Please select your gender!";
+                if (!firstErrorField) firstErrorField = document.getElementById("gender_male");
                 isValid = false;
             }
 
@@ -118,15 +129,44 @@
             const terms = document.getElementById("accept_agbs");
             if (!terms.checked) {
                 document.getElementById("terms-error").textContent = "You must accept the terms!";
+                if (!firstErrorField) firstErrorField = terms;
                 isValid = false;
             }
 
-            // If all fields are valid, submit the form
-            if (isValid) {
-                alert("Form submitted successfully!");
-                this.submit();
+            // Focus on first error message
+            if (!isValid) {
+                document.getElementById("error-container").textContent = "Please fix the errors below.";
+                firstErrorField.focus(); // Move focus to the first error field
+                return;
             }
+
+            // Success message for screen readers
+            document.getElementById("success-message").textContent = "Form submitted successfully!";
+            
+            // Show alert message (for sighted users)
+            alert("Form submitted successfully!");
+
+            this.submit();
         });
+
+        // Fix for the R.G. Hint: Fix next line ;)
+        function validateInput(input, message) {
+            let $input = document.querySelector('[name="' + input + '"]');
+            let $errorContainer = document.getElementById("error-container");
+            let $errorMessage = document.createElement("a");
+
+            $errorMessage.href = "#"; // Makes it focusable
+            $errorMessage.id = input + "-error"; // Fix: Link the error properly
+            $errorMessage.textContent = message;
+            $errorMessage.onclick = function (e) {
+                document.getElementById(input).focus();
+                e.preventDefault();
+            };
+
+            // Announce errors dynamically for screen readers
+            $errorContainer.appendChild($errorMessage);
+            $input.setAttribute("aria-describedby", input + "-error");
+        }
     </script>
 </body>
 </html>
